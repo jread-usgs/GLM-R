@@ -17,7 +17,7 @@
 #'print(glm_nml)
 #'@seealso \link{get_nml_value}, \link{read_nml}
 #'@export
-set_nml <- function(glm_nml, arg_name, arg_val, arg_list = NULL){
+set_nml <- function(glm_nml, arg_name, arg_val, arg_list = NULL, if_flawed = 'ignore'){
   
   if (missing(arg_name) & missing(arg_val)){
     return(setnmlList(glm_nml,arg_list))
@@ -50,5 +50,40 @@ set_nml <- function(glm_nml, arg_name, arg_val, arg_list = NULL){
     arg_val <- paste0(arg_val, collapse = ",")
   }
   glm_nml[[blck]][[arg_name]]	<- arg_val
+  validate_nml(glm_nml, if_flawed = if_flawed)
   return(glm_nml)
+}
+
+
+validate_nml <- function(glm_nml, if_flawed = c("stop", "warn", "ignore")){
+  if_flawed <- match.arg(if_flawed)
+  
+  # if we are ignoring issues, this is a pass-through function:
+  if (if_flawed == 'ignore')
+    return(glm_nml)
+  
+  
+  tests = list("init_depth" = TRUE)#,
+               #"num_hypso" = TRUE,
+               #"num_depths" = TRUE)
+  
+  for (test in names(tests)){
+    tests[[test]] <- do.call(paste0('flawed_', test), list(glm_nml = glm_nml))
+  }
+  
+  # now deal with any errors
+  browser()
+}
+
+flawed_init_depth <- function(glm_nml){
+  
+  lake_depth <- get_nml_value(glm_nml = glm_nml, arg_name = 'lake_depth')
+  the_depths <- get_nml_value(glm_nml = glm_nml, arg_name = 'the_depths')
+  H <- get_nml_value(glm_nml = glm_nml, arg_name = 'H')
+  
+  # check if any output depths requested are deeper than the initial depth
+  # -- or --
+  # if the initial depth is deeper than the hypographic range in depth/elevation
+  (max(the_depths) > lake_depth) || (range(H) < lake_depth) 
+  
 }
